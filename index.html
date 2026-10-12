@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>纺织工艺与转数损耗测算系统</title>
+<style>
+*{box-sizing:border-box}
+body{background:#121212;color:#e0e0e0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Arial,sans-serif;margin:0;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+h2{text-align:center;color:#fff;margin:4px 0}
+.sub{text-align:center;color:#aaa;font-size:12px;margin-bottom:6px}
+#trial{text-align:center;color:#ff9900;font-size:12px;margin-bottom:10px;min-height:16px}
+.gp,.tb,.tc{max-width:1400px;margin:0 auto 12px}
+.gp{background:#1e1e1e;padding:14px 18px;border-radius:8px;display:flex;gap:24px;flex-wrap:wrap;border:1px solid #333}
+.gi{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:bold;color:#fff}
+.tb{display:flex;justify-content:space-between;gap:8px}
+button{padding:10px 16px;border:0;border-radius:6px;cursor:pointer;font-weight:bold;font-size:14px;color:#fff}
+.ex{background:#28a745}.cl{background:#dc3545}
+.tc{overflow-x:auto;background:#1e1e1e;border-radius:8px}
+table{width:100%;border-collapse:collapse;text-align:center;font-size:13px}
+th,td{padding:10px 6px;border-bottom:1px solid #333}
+th{background:#2c2c2c;color:#fff;white-space:nowrap}
+input{background:#2a2a2a;border:1px solid #444;color:#fff;padding:6px;border-radius:4px;width:70px;text-align:center;font-size:16px}
+.gp input{width:100px}
+.fm{font-weight:bold;color:#fc0}.ro{font-weight:bold;color:#4da6ff}
+#ov{position:fixed;inset:0;background:rgba(18,18,18,.98);display:none;justify-content:center;align-items:center;z-index:9999;padding:16px}
+.pb{background:#1e1e1e;padding:26px;border-radius:10px;text-align:center;border:1px solid #444;width:100%;max-width:380px;max-height:100%;overflow:auto}
+.pb h3{color:#f66;margin-top:0}.pb p{font-size:14px;color:#ccc;line-height:1.6;margin:8px 0}
+.al{font-size:18px;font-weight:bold;color:#4da6ff;background:#2a2a2a;padding:10px;border-radius:6px;margin:10px 0}
+.pb input,.pb textarea{width:100%;margin:6px 0;padding:10px;font-size:15px;background:#2a2a2a;border:1px solid #444;color:#fff;border-radius:6px}
+.pb textarea{height:84px;resize:none;word-break:break-all}
+.pb button{width:100%;background:#007bff;margin-top:6px}
+.pb .g{background:#444}
+#err{color:#f55;font-size:13px;min-height:18px;margin-top:6px}
+th:nth-child(7),th:nth-child(8),td:nth-child(7),td:nth-child(8){display:none}
+@media(max-width:720px){
+ .gp{flex-direction:column;gap:10px}.gi{justify-content:space-between}.gp input{width:130px}
+ thead{display:none}
+ table,tbody,tr,td{display:block;width:100%}
+ .tc{background:none}
+ tr{margin:0 0 10px;border:1px solid #333;border-radius:8px;padding:4px 12px;background:#1e1e1e}
+ td{display:flex;justify-content:space-between;align-items:center;border:0;padding:7px 0;text-align:right}
+ td::before{content:attr(data-l);color:#999;text-align:left;margin-right:10px}
+ td input{width:130px;height:42px}
+ td:first-child{border-bottom:1px solid #333}
+}
+</style>
+</head>
+<body>
+<div id="ov"><div class="pb">
+ <h3>⚠️ 软件试用期已满</h3>
+ <p>试用期为 30 天。如需继续使用,请通过支付宝转账 <b>500 人民币</b>:</p>
+ <div class="al">支付宝: 15088843087</div>
+ <p>转账后,把下面的<b>设备码</b>发给作者,获取专属激活码。</p>
+ <input id="dev" readonly onclick="this.select()">
+ <button class="g" onclick="copyDev()">复制设备码</button>
+ <textarea id="lic" placeholder="粘贴激活码"></textarea>
+ <button onclick="unlock()">激活</button>
+ <div id="err"></div>
+</div></div>
+
+<h2>纺织工艺与转数损耗测算系统</h2>
+<div class="sub">CÔNG TY TNHH DỆT MAY SÁNG TẠO KINH VĨ</div>
+<div id="trial"></div>
+
+<div class="gp">
+ <div class="gi"><span>总针数 (T):</span><input type="number" inputmode="decimal" id="gT" value="2640"></div>
+ <div class="gi"><span>匹重 (KG):</span><input type="number" inputmode="decimal" id="gR" value="25"></div>
+ <div class="gi"><span>订单数量 (KG):</span><input type="number" inputmode="decimal" id="gQ" value="20000"></div>
+ <div class="gi"><span>开机转数:</span><span id="rpm" class="ro" style="font-size:16px">0</span></div>
+</div>
+<div class="tb"><button class="ex" onclick="exportCSV()">📥 导出报表</button><button class="cl" onclick="resetData()">恢复默认</button></div>
+<div class="tc"><table>
+<thead><tr><th>序号</th><th>原料</th><th>纱支 (Ne)</th><th>纱长 (100G)</th><th>路数 (F)</th><th>比例 (%)</th><th>一圈长度</th><th>一圈重量 (KG)</th><th>用纱量 (KG)</th><th>+2%损耗 (KG)</th><th>客户来纱 (KG)</th><th>应退纱 (KG)</th></tr></thead>
+<tbody id="tb"></tbody></table></div>
+
+<script>
+// ===== 配置 =====
+const PUB={"kty":"EC","crv":"P-256","x":"RJHpZ3j8EIIg0bBOcrUsRbXWVZC5MXGrB2dmlTC_cAQ","y":"dtVNQbREV9tFatV_IG6sUfsC1pZfTRRKdDEhE3VpnSI"};            // 验证公钥(私钥只在作者的激活码生成器里)
+const TRIAL_DAYS=30;
+const HARD_END=null;          // 可选:全局截止日,如 '2027-01-31',到期后无论何时首次打开都需激活
+const $=id=>document.getElementById(id);
+
+// ===== 存储(localStorage + cookie 双备份) =====
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function ck(k){try{const m=document.cookie.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null}catch(e){return null}}
+function setCk(k,v){try{document.cookie=k+'='+encodeURIComponent(v)+';max-age=315360000;path=/;SameSite=Lax'}catch(e){}}
+function keep(k,v){ls(k,v);setCk(k,v);return v}
+function persist(k,gen){return keep(k,ls(k)||ck(k)||gen())}
+
+// ===== 授权 =====
+const devId=persist('tx_dev',()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>b.toString(16).padStart(2,'0')).join('').toUpperCase());
+const t0=Number(persist('tx_t0',()=>String(Date.now())));
+const now=Date.now();
+const last=Number(ls('tx_last')||ck('tx_last')||0);
+keep('tx_last',String(Math.max(last,now)));
+const clockBack=last-now>864e5;   // 手机时间被调回超过1天,视为作弊
+$('dev').value=devId.match(/.{4}/g).join('-');
+
+async function verify(code){
+ try{
+  const key=await crypto.subtle.importKey('jwk',PUB,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+  const sig=Uint8Array.from(atob(code.replace(/\s/g,'')),c=>c.charCodeAt(0));
+  return await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},key,sig,new TextEncoder().encode('TX1|'+devId));
+ }catch(e){return false}
+}
+async function gate(){
+ const lic=ls('tx_lic')||ck('tx_lic');
+ if(lic&&await verify(lic)){$('ov').style.display='none';$('trial').textContent='';return}
+ const left=Math.ceil((t0+TRIAL_DAYS*864e5-now)/864e5);
+ const expired=left<=0||clockBack||(HARD_END&&now>new Date(HARD_END));
+ if(expired){
+  $('ov').style.display='flex';
+  if(!(window.crypto&&crypto.subtle))$('err').textContent='当前浏览器无法验证激活码,请用 Safari / Chrome 打开。';
+ }else{$('ov').style.display='none'}
+}
+async function unlock(){
+ const code=$('lic').value.replace(/\s/g,'');
+ if(code&&await verify(code)){keep('tx_lic',code);gate()}
+ else $('err').textContent='激活码无效。请确认它是用上方设备码生成的。';
+}
+function copyDev(){
+ const t=$('dev').value;
+ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$('err').textContent='设备码已复制',()=>{$('dev').select();$('err').textContent='请长按设备码手动复制'});
+}
+
+// ===== 数据 =====
+const DEF=[
+ {material:'DTY',count:50,length:10,feed:36,clientSupply:100},
+ {material:'DTY',count:75,length:10,feed:36,clientSupply:0},
+ {material:'OP',count:70,length:10,feed:36,clientSupply:0},
+ {material:'OP',count:40,length:10,feed:36,clientSupply:0},
+ {material:'COTTON',count:30,length:10,feed:36,clientSupply:0},
+ {material:'COTTON',count:30,length:10,feed:36,clientSupply:0},
+ {material:'COTTON',count:12,length:10,feed:36,clientSupply:0},
+ {material:'COTTON',count:30,length:10,feed:0,clientSupply:0}];
+let rowsData=DEF.map(r=>({...r}));
+try{const d=ls('process_fixed_data_v5');if(d)rowsData=JSON.parse(d);
+ const c=ls('process_global_config_v11');if(c){const g=JSON.parse(c);$('gT').value=g.totalNeedle;$('gR').value=g.rollWeight;$('gQ').value=g.orderQty}}catch(e){}
+
+const G=()=>({T:+$('gT').value||0,R:+$('gR').value||0,Q:+$('gQ').value||0});
+function save(){ls('process_fixed_data_v5',JSON.stringify(rowsData));const g=G();ls('process_global_config_v11',JSON.stringify({totalNeedle:g.T,rollWeight:g.R,orderQty:g.Q}))}
+
+function calc(){
+ const g=G();let sum=0;
+ const rc=rowsData.map(r=>{
+  const c=+r.count||1,l=+r.length||0,f=+r.feed||0;
+  const J=l*g.T/100;
+  const base=(r.material==='DTY'||r.material==='OP')?5314.5/c:c;
+  const K=(J/100)*(453.6/(base*840*0.9144));
+  sum+=K*f;return{J,K,kf:K*f}});
+ const rpm=sum>0?g.R/sum*1000:0;
+ const rows=rowsData.map((r,i)=>{
+  const x=rc[i],ratio=sum>0?x.kf/sum*100:0,use=g.Q*ratio/100,loss=use>0?use*1.02:0,cs=+r.clientSupply||0;
+  return{...x,ratio,use,loss,cs,ret:cs-loss}});
+ return{g,rpm,rows};
+}
+
+// 表格只建一次,输入时仅更新计算列(避免输入框失焦、手机键盘收起)
+function build(){
+ const inp=(i,f,l,st)=>`<td data-l="${l}"><input type="number" inputmode="decimal" ${st||''} data-i="${i}" data-f="${f}" value="${rowsData[i][f]??0}"></td>`;
+ $('tb').innerHTML=rowsData.map((r,i)=>`<tr><td data-l="序号">${i+1}</td><td data-l="原料" class="fm">${r.material}</td>`
+  +inp(i,'count','纱支 (Ne)')+inp(i,'length','纱长 (100G)','step="0.1"')+inp(i,'feed','路数 (F)')
+  +`<td data-l="比例 (%)" class="ro"></td><td data-l="一圈长度" class="ro"></td><td data-l="一圈重量 (KG)" class="ro"></td><td data-l="用纱量 (KG)" class="ro"></td><td data-l="+2%损耗 (KG)" class="ro" style="color:#f90"></td>`
+  +inp(i,'clientSupply','客户来纱 (KG)')+`<td data-l="应退纱 (KG)" class="ro"></td></tr>`).join('');
+}
+function update(){
+ save();const {rpm,rows}=calc();
+ $('rpm').textContent=rpm.toFixed(4)+' 转';
+ rows.forEach((x,i)=>{const c=$('tb').rows[i].cells;
+  c[5].textContent=x.ratio.toFixed(4)+'%';c[6].textContent=x.J.toFixed(2);c[7].textContent=x.K.toFixed(6);
+  c[8].textContent=x.use.toFixed(2);c[9].textContent=x.loss.toFixed(2);
+  c[11].textContent=x.ret.toFixed(2);c[11].style.color=x.ret<0?'#f66':'#6f6'});
+}
+document.addEventListener('input',e=>{
+ const t=e.target;
+ if(t.dataset&&t.dataset.f)rowsData[t.dataset.i][t.dataset.f]=t.value===''?'':Number(t.value);
+ if(t.dataset&&t.dataset.f||t.id==='gT'||t.id==='gR'||t.id==='gQ')update();
+});
+
+function resetData(){if(confirm('确定恢复默认的固定配方与数据吗?')){rowsData=DEF.map(r=>({...r}));build();update()}}
+
+function exportCSV(){
+ const {g,rpm,rows}=calc();
+ let csv=`\uFEFF# 全局参数: 总针数T=${g.T}, 匹重KG=${g.R}, 订单数量KG=${g.Q}\n开机转数: ${rpm.toFixed(4)} 转\n序号,原料成份,纱支Ne,纱长100G,路数F,比例%,一圈长度,一圈重量KG,用纱量KG,+2%损耗KG,客户来纱KG,应退纱KG\n`;
+ rows.forEach((x,i)=>{const r=rowsData[i];
+  csv+=`${i+1},"${r.material}",${r.count},${r.length},${r.feed},${x.ratio.toFixed(4)}%,${x.J.toFixed(2)},${x.K.toFixed(6)},${x.use.toFixed(2)},${x.loss.toFixed(2)},${x.cs},${x.ret.toFixed(2)}\n`});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+ a.download='工艺测算报表_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// 点进输入框自动全选,直接输入新数字即可覆盖
+document.addEventListener('focusin',e=>{const t=e.target;if(t.matches&&t.matches('input[type=number]'))setTimeout(()=>{try{t.select()}catch(x){}},0)});
+build();update();gate();
+</script>
+</body>
+</html>
