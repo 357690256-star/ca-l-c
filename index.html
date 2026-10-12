@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121212">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="纺织测算">
+<link rel="apple-touch-icon" href="icon.png">
 <title>纺织工艺与转数损耗测算系统</title>
 <style>
 *{box-sizing:border-box}
@@ -62,6 +67,7 @@ th:nth-child(7),th:nth-child(8),td:nth-child(7),td:nth-child(8){display:none}
 <h2>纺织工艺与转数损耗测算系统</h2>
 <div class="sub">CÔNG TY TNHH DỆT MAY SÁNG TẠO KINH VĨ</div>
 <div id="trial"></div>
+<div id="warn" style="display:none;max-width:1400px;margin:0 auto 12px;padding:10px 14px;background:#4a1d1d;color:#ffb3b3;border-radius:8px;font-size:13px;line-height:1.5"></div>
 
 <div class="gp">
  <div class="gi"><span>总针数 (T):</span><input type="number" inputmode="decimal" id="gT" value="2640"></div>
@@ -75,6 +81,37 @@ th:nth-child(7),th:nth-child(8),td:nth-child(7),td:nth-child(8){display:none}
 <tbody id="tb"></tbody></table></div>
 
 <script>
+// ===== 数据防丢:localStorage + IndexedDB + cookie 三重备份 =====
+let OK=false;
+try{localStorage.setItem('_t','1');OK=localStorage.getItem('_t')==='1'}catch(e){}
+window.__restoring=false;
+const IDB={
+ open:()=>new Promise((res,rej)=>{try{const r=indexedDB.open('tx',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej()}catch(e){rej()}}),
+ set(k,v){if(window.__restoring)return;IDB.open().then(db=>{db.transaction('kv','readwrite').objectStore('kv').put(v,k)}).catch(()=>{})},
+ all:()=>IDB.open().then(db=>new Promise(res=>{const o={},q=db.transaction('kv').objectStore('kv').openCursor();q.onsuccess=()=>{const c=q.result;if(c){o[c.key]=c.value;c.continue()}else res(o)};q.onerror=()=>res({})})).catch(()=>({}))
+};
+(function(){
+ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+ if(!OK)return;
+ const mirror=()=>{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);IDB.set(k,localStorage.getItem(k))}};
+ if(localStorage.getItem('tx_dev')){mirror();return}
+ window.__restoring=true;
+ IDB.all().then(o=>{
+  if(o.tx_dev){
+   Object.keys(o).forEach(k=>localStorage.setItem(k,o[k]));
+   ['tx_dev','tx_t0','tx_lic','tx_last'].forEach(k=>{if(o[k])document.cookie=k+'='+encodeURIComponent(o[k])+';max-age=315360000;path=/;SameSite=Lax'});
+   location.reload();return}
+  window.__restoring=false;mirror();
+ });
+})();
+document.addEventListener('DOMContentLoaded',()=>{
+ const w=document.getElementById('warn');let m='';
+ if(!OK)m='当前浏览器无法保存数据(可能是无痕模式)。请用 Safari 普通模式打开。';
+ else if(/MicroMessenger|QQ\/|DingTalk|AlipayClient/i.test(navigator.userAgent))m='你正在聊天软件内打开,数据可能被清除。请点右上角「…」选择「在浏览器中打开」,再「添加到主屏幕」。';
+ if(m){w.textContent=m;w.style.display='block'}
+});
+</script>
+<script>
 // ===== 配置 =====
 const PUB={"kty":"EC","crv":"P-256","x":"RJHpZ3j8EIIg0bBOcrUsRbXWVZC5MXGrB2dmlTC_cAQ","y":"dtVNQbREV9tFatV_IG6sUfsC1pZfTRRKdDEhE3VpnSI"};            // 验证公钥(私钥只在作者的激活码生成器里)
 const TRIAL_DAYS=30;
@@ -82,7 +119,7 @@ const HARD_END=null;          // 可选:全局截止日,如 '2027-01-31',到期�
 const $=id=>document.getElementById(id);
 
 // ===== 存储(localStorage + cookie 双备份) =====
-function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function ls(k,v){if(v!==undefined)IDB.set(k,v);try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 function ck(k){try{const m=document.cookie.match(new RegExp('(?:^|; )'+k+'=([^;]*)'));return m?decodeURIComponent(m[1]):null}catch(e){return null}}
 function setCk(k,v){try{document.cookie=k+'='+encodeURIComponent(v)+';max-age=315360000;path=/;SameSite=Lax'}catch(e){}}
 function keep(k,v){ls(k,v);setCk(k,v);return v}
@@ -192,6 +229,7 @@ function exportCSV(){
 
 // 点进输入框自动全选,直接输入新数字即可覆盖
 document.addEventListener('focusin',e=>{const t=e.target;if(t.matches&&t.matches('input[type=number]'))setTimeout(()=>{try{t.select()}catch(x){}},0)});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 build();update();gate();
 </script>
 </body>
